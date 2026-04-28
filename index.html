@@ -3,305 +3,481 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tournament Pro System - GCSL 2026</title>
+    <title>Tournament Pro - GCSL 2026</title>
+    <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;700;900&family=Inter:wght@400;700;900&display=swap" rel="stylesheet" />
+    <!-- Tailwind CSS (Play CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: {
                 extend: {
-                    fontFamily: {
-                        sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
-                        display: ["Oswald", "sans-serif"],
+                    fontFamily: { 
+                        sans: ["Inter", "sans-serif"], 
+                        display: ["Oswald", "sans-serif"] 
                     },
-                    colors: { gold: '#facc15', dark: '#08080c', 'dark-card': 'rgba(17, 24, 39, 0.4)', glass: 'rgba(255, 255, 255, 0.03)', 'glass-border': 'rgba(255, 255, 255, 0.05)' },
-                    keyframes: { shake: { '0%, 100%': { transform: 'translateX(0)' }, '25%': { transform: 'translateX(-4px)' }, '75%': { transform: 'translateX(4px)' } } },
-                    animation: { shake: 'shake 0.2s ease-in-out 0s 2' }
+                    colors: { 
+                        gold: '#facc15', 
+                        dark: '#08080c'
+                    }
                 }
             }
         }
     </script>
-    <style type="text/tailwindcss">
-        @layer base { body { @apply bg-[#08080c] text-white font-sans overflow-hidden; } }
-        .bold-title { @apply text-5xl md:text-7xl lg:text-8xl font-black italic uppercase leading-[0.85] tracking-tighter text-gold mb-2; filter: drop-shadow(0 0 15px rgba(250, 204, 21, 0.4)); }
-        .fvpl-font { @apply font-display italic uppercase tracking-wider; }
-        .glass-card { @apply bg-dark-card border border-white/5 rounded-lg; }
-        .gold-glow { text-shadow: 2px 2px 0px rgba(0,0,0,0.5), 0 0 20px rgba(250, 204, 21, 0.5); }
-        .active-row { @apply bg-gold/10 border-l-4 border-l-gold; }
-        .stream-layout { @apply flex flex-row overflow-x-auto gap-4 p-4; }
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.02); }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(250, 204, 21, 0.2); border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(250, 204, 21, 0.4); }
+    <style>
+        /* CSS thuần để tránh lỗi @layer của Tailwind CDN */
+        body {
+            background-color: #08080c;
+            color: white;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+        .bold-title {
+            font-size: 3.5rem;
+            font-weight: 900;
+            font-style: italic;
+            text-transform: uppercase;
+            line-height: 0.85;
+            letter-spacing: -0.05em;
+            color: #facc15;
+            filter: drop-shadow(0 0 15px rgba(250, 204, 21, 0.4));
+        }
+        @media (min-width: 768px) { .bold-title { font-size: 5rem; } }
+        @media (min-width: 1024px) { .bold-title { font-size: 6rem; } }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.5rem;
+            backdrop-filter: blur(4px);
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(250, 204, 21, 0.3);
+            border-radius: 10px;
+        }
+        
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
     </style>
 </head>
 <body>
     <div id="root"></div>
+
+    <!-- Core React & Babel -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    
+    <!-- Dependencies -->
     <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js"></script>
     <script src="https://unpkg.com/lucide@0.344.0/dist/umd/lucide.min.js"></script>
     <script src="https://unpkg.com/html-to-image@1.11.11/dist/html-to-image.js"></script>
     <script src="https://unpkg.com/clsx@2.1.0/dist/clsx.min.js"></script>
     <script src="https://unpkg.com/tailwind-merge@2.2.1/dist/bundle-umd.js"></script>
+
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef } = React;
         const { motion, AnimatePresence } = FramerMotion;
-        const { Trophy, Users, Calendar, LayoutGrid, Settings, ChevronRight, ShieldAlert, Sword, Medal, RefreshCw, MoreVertical, Camera, Download, Upload } = lucide;
+        const { Trophy, Users, Calendar, LayoutGrid, Settings, Sword, Medal, Camera, Download, Upload, RefreshCw, LogOut } = lucide;
         const { toPng } = htmlToImage;
         const { twMerge } = TailwindMerge;
+
         function cn(...inputs) { return twMerge(clsx(...inputs)); }
 
+        // --- Data Khởi Tạo ---
         const INITIAL_TEAMS = Array.from({ length: 16 }, (_, i) => ({
-            id: `team-${i + 1}`, name: `Đội Tuyển ${String(i + 1).padStart(2, '0')}`, points: 0, played: 0, wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0, gd: 0, h2hLosses: 0, opponentsPoints: [], prevOpponents: []
+            id: `team-${i + 1}`, 
+            name: `Đội Tuyển ${String(i + 1).padStart(2, '0')}`, 
+            points: 0, played: 0, wins: 0, losses: 0, gd: 0, prevOpponents: []
         }));
 
+        // --- Logic Tính Toán (Swiss System) ---
         function calculateStats(teams, matches) {
-            const updatedTeams = teams.map(t => ({ ...t, points: 0, played: 0, wins: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, gd: 0, h2hLosses: 0, opponentsPoints: [], prevOpponents: [] }));
-            const teamMap = new Map(updatedTeams.map(t => [t.id, t]));
+            const teamMap = new Map(teams.map(t => [t.id, { ...t, points: 0, played: 0, wins: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, gd: 0, prevOpponents: [] }]));
+            
             matches.filter(m => m.isFinished && m.stage === 'SWISS').forEach(m => {
-                const home = teamMap.get(m.homeTeamId), away = teamMap.get(m.awayTeamId);
-                if (home && away) {
-                    home.played++; away.played++; home.goalsFor += m.homeScore || 0; home.goalsAgainst += m.awayScore || 0; away.goalsFor += m.awayScore || 0; away.goalsAgainst += m.homeScore || 0;
-                    home.prevOpponents.push(away.id); away.prevOpponents.push(home.id);
-                    let homeWon = m.homeScore > m.awayScore || (m.homeScore === m.awayScore && (m.homePen || 0) > (m.awayPen || 0));
-                    if (homeWon) { home.wins++; home.points += 3; away.losses++; } else { away.wins++; away.points += 3; home.losses++; }
+                const h = teamMap.get(m.homeTeamId), a = teamMap.get(m.awayTeamId);
+                if (h && a) {
+                    h.played++; a.played++;
+                    h.goalsFor += (m.homeScore || 0); h.goalsAgainst += (m.awayScore || 0);
+                    a.goalsFor += (m.awayScore || 0); a.goalsAgainst += (m.homeScore || 0);
+                    h.prevOpponents.push(a.id); a.prevOpponents.push(h.id);
+                    
+                    const hWon = (m.homeScore || 0) > (m.awayScore || 0) || ((m.homeScore || 0) === (m.awayScore || 0) && (m.homePen || 0) > (m.awayPen || 0));
+                    if (hWon) { h.wins++; h.points += 3; a.losses++; } else { a.wins++; a.points += 3; h.losses++; }
                 }
             });
-            updatedTeams.forEach(t => {
-                t.gd = t.goalsFor - t.goalsAgainst;
-                t.opponentsPoints = t.prevOpponents.map(oppId => teamMap.get(oppId)?.points || 0);
+
+            const res = Array.from(teamMap.values());
+            res.forEach(t => { t.gd = (t.goalsFor || 0) - (t.goalsAgainst || 0); });
+
+            return res.sort((a, b) => {
+                if (b.points !== a.points) return b.points - a.points;
+                if (b.gd !== a.gd) return b.gd - a.gd;
+                return b.wins - a.wins;
             });
-            const pointsGroups = new Map();
-            updatedTeams.forEach(t => { if (!pointsGroups.has(t.points)) pointsGroups.set(t.points, []); pointsGroups.get(t.points).push(t); });
-            const sortedPoints = Array.from(pointsGroups.keys()).sort((a, b) => b - a);
-            let finalResult = [];
-            for (const pts of sortedPoints) {
-                const group = pointsGroups.get(pts);
-                if (group.length > 1) {
-                    const teamIds = new Set(group.map(t => t.id));
-                    const groupMatches = matches.filter(m => m.isFinished && m.stage === 'SWISS' && teamIds.has(m.homeTeamId) && teamIds.has(m.awayTeamId));
-                    const h2hLosses = new Map();
-                    group.forEach(t => h2hLosses.set(t.id, 0));
-                    groupMatches.forEach(m => {
-                        let homeWon = (m.homeScore || 0) > (m.awayScore || 0) || ((m.homeScore || 0) === (m.awayScore || 0) && (m.homePen || 0) > (m.awayPen || 0));
-                        if (homeWon) h2hLosses.set(m.awayTeamId, h2hLosses.get(m.awayTeamId) + 1); else h2hLosses.set(m.homeTeamId, h2hLosses.get(m.homeTeamId) + 1);
-                    });
-                    group.forEach(t => t.h2hLosses = h2hLosses.get(t.id));
-                    group.sort((a, b) => {
-                        if (h2hLosses.get(a.id) !== h2hLosses.get(b.id)) return h2hLosses.get(a.id) - h2hLosses.get(b.id);
-                        if (a.losses !== b.losses) return a.losses - b.losses;
-                        if (b.gd !== a.gd) return b.gd - a.gd;
-                        if (b.goalsFor !== a.goalsFor) return b.goalsFor - a.goalsFor;
-                        const getBH = (arr) => arr.length <= 2 ? arr.reduce((s, p) => s + p, 0) : [...arr].sort((x, y) => x - y).slice(1, -1).reduce((s, p) => s + p, 0);
-                        return getBH(b.opponentsPoints) - getBH(a.opponentsPoints);
-                    });
-                }
-                finalResult = finalResult.concat(group);
-            }
-            return finalResult;
         }
 
-        function generateSwissPairings(sortedTeams, round) {
-            const teamsToPair = [...sortedTeams]; const n = teamsToPair.length;
-            function find(current, used) {
-                if (used.size === n) return current;
-                let aIdx = 0; while (aIdx < n && used.has(teamsToPair[aIdx].id)) aIdx++;
-                if (aIdx >= n) return current;
-                const teamA = teamsToPair[aIdx];
-                const candidates = [];
-                const res = teamsToPair.map((t, i) => ({ id: t.id, points: t.points, index: i })).filter(x => !used.has(x.id) && x.points === teamA.points).map(x => x.index);
-                if (res.length > 1) {
-                    const idx = res.indexOf(aIdx); const half = Math.ceil(res.length / 2);
-                    const target = res[(idx + half) % res.length]; if (target !== aIdx) candidates.push(target);
+        // --- Pairings Logic ---
+        function generateSwissPairings(sortedTeams) {
+            const paired = new Set();
+            const pairings = [];
+            for (let i = 0; i < sortedTeams.length; i++) {
+                const tA = sortedTeams[i];
+                if (paired.has(tA.id)) continue;
+                for (let j = i + 1; j < sortedTeams.length; j++) {
+                    const tB = sortedTeams[j];
+                    if (!paired.has(tB.id) && !tA.prevOpponents.includes(tB.id)) {
+                        pairings.push([tA.id, tB.id]);
+                        paired.add(tA.id);
+                        paired.add(tB.id);
+                        break;
+                    }
                 }
-                res.forEach(idx => { if (idx !== aIdx && !candidates.includes(idx)) candidates.push(idx); });
-                for (let j = 0; j < n; j++) if (j !== aIdx && !used.has(teamsToPair[j].id) && !candidates.includes(j)) candidates.push(j);
-                for (const j of candidates) {
-                    const teamB = teamsToPair[j]; if (teamA.prevOpponents.includes(teamB.id)) continue;
-                    used.add(teamA.id); used.add(teamB.id); current.push([teamA.id, teamB.id]);
-                    const r = find(current, used); if (r) return r;
-                    used.delete(teamA.id); used.delete(teamB.id); current.pop();
-                }
-                return null;
             }
-            return find([], new Set()) || [];
+            return pairings;
         }
 
+        // --- Component App Chính ---
         function App() {
-            const [isInitialized, setIsInitialized] = useState(false);
-            const [isLoggedIn, setIsLoggedIn] = useState(false);
             const [view, setView] = useState(null);
-            const [adminPassword, setAdminPassword] = useState('');
-            const [showPasswordError, setShowPasswordError] = useState(false);
+            const [pass, setPass] = useState('');
             const [stage, setStage] = useState('SWISS');
             const [teams, setTeams] = useState(INITIAL_TEAMS);
             const [matches, setMatches] = useState([]);
-            const [editingTeams, setEditingTeams] = useState(false);
-            const isResetting = useRef(false);
+            const [isInit, setIsInit] = useState(false);
 
+            // Load dữ liệu
             useEffect(() => {
-                const saved = localStorage.getItem('pro_league_data');
+                const saved = localStorage.getItem('gcsl_data_v1');
                 if (saved) {
                     try {
                         const parsed = JSON.parse(saved);
-                        if (parsed.teams) setTeams(parsed.teams);
-                        if (parsed.matches) setMatches(parsed.matches);
-                        if (parsed.stage) setStage(parsed.stage);
-                        if (parsed.isLoggedIn !== undefined) setIsLoggedIn(parsed.isLoggedIn);
-                        if (parsed.view) setView(parsed.view);
-                    } catch (e) {}
+                        setTeams(parsed.teams || INITIAL_TEAMS);
+                        setMatches(parsed.matches || []);
+                        setStage(parsed.stage || 'SWISS');
+                        setView(parsed.view || null);
+                    } catch(e) { console.error(e); }
                 }
-                setIsInitialized(true);
+                setIsInit(true);
             }, []);
 
+            // Lưu dữ liệu
             useEffect(() => {
-                if (isInitialized && !isResetting.current) {
-                    localStorage.setItem('pro_league_data', JSON.stringify({ teams, matches, stage, isLoggedIn, view }));
+                if (isInit) {
+                    localStorage.setItem('gcsl_data_v1', JSON.stringify({ teams, matches, stage, view }));
                 }
-            }, [teams, matches, stage, isLoggedIn, view, isInitialized]);
+            }, [teams, matches, stage, view, isInit]);
 
-            const sortedTeams = useMemo(() => calculateStats(teams, matches), [teams, matches]);
-            const currentRound = useMemo(() => {
-                const s = matches.filter(m => m.stage === 'SWISS');
-                return s.length === 0 ? 0 : Math.max(...s.map(m => m.round));
+            const sorted = useMemo(() => calculateStats(teams, matches), [teams, matches]);
+            const curRd = useMemo(() => {
+                const swiss = matches.filter(m => m.stage === 'SWISS');
+                return swiss.length ? Math.max(...swiss.map(m => m.round)) : 0;
             }, [matches]);
 
-            const resetMatch = (id) => setMatches(prev => prev.map(m => m.id === id ? { ...m, isFinished: false } : m));
-            const [isConfirmingReset, setIsConfirmingReset] = useState(false);
-            const resetTournament = () => { isResetting.current = true; localStorage.clear(); window.location.reload(); };
-            const handleLogout = () => { if (window.confirm('Đăng xuất?')) { setIsLoggedIn(false); setView(null); } };
-            const [isDownloading, setIsDownloading] = useState(null);
-            const downloadImage = async (id, name) => {
-                const el = document.getElementById(id); if (!el || isDownloading) return;
-                setIsDownloading(id);
-                try {
-                    await new Promise(r => setTimeout(r, 1000));
-                    const url = await toPng(el, { backgroundColor: '#08080c', pixelRatio: 2 });
-                    const link = document.createElement('a'); link.href = url; link.download = `${name}.png`; link.click();
-                } catch (e) {} finally { setIsDownloading(null); }
+            // Handlers
+            const saveResult = (id, hs, as) => {
+                setMatches(prev => prev.map(m => m.id === id ? { ...m, homeScore: hs, awayScore: as, isFinished: true } : m));
             };
 
-            const addMatches = (data) => {
-                const newM = data.map(d => ({ id: `m-${Date.now()}-${Math.random()}`, homeTeamId: d.homeId, awayTeamId: d.awayId, isFinished: false, round: d.round, stage: d.stage }));
-                setMatches(prev => [...prev, ...newM]);
-            };
-            const updateScore = (id, homeScore, awayScore, homePen, awayPen, gameScores) => {
-                setMatches(prev => prev.map(m => m.id === id ? { ...m, homeScore, awayScore, homePen, awayPen, gameScores, isFinished: true } : m));
-            };
-            const updateParticipants = (id, homeId, awayId) => {
-                setMatches(prev => prev.map(m => m.id === id ? { ...m, homeTeamId: homeId !== undefined ? homeId : m.homeTeamId, awayTeamId: awayId !== undefined ? awayId : m.awayTeamId } : m));
+            const resetMatch = (id) => {
+                setMatches(prev => prev.map(m => m.id === id ? { ...m, isFinished: false } : m));
             };
 
-            const refreshBracket = () => {
-                const getW = (m) => {
-                    if (!m.isFinished) return null;
-                    if (m.homeScore > m.awayScore) return m.homeTeamId;
-                    if (m.awayScore > m.homeScore) return m.awayTeamId;
-                    return (m.homePen || 0) > (m.awayPen || 0) ? m.homeTeamId : m.awayTeamId;
-                };
-                const getL = (m) => { const w = getW(m); return w ? (w === m.homeTeamId ? m.awayTeamId : m.homeTeamId) : null; };
-                const ups = [];
-                const findM = (p) => matches.find(m => m.id.startsWith(p));
-                const u1=findM('ubm1'), u2=findM('ubm2'), u3=findM('ubm3'), u4=findM('ubm4'), u5=findM('ubm5'), u6=findM('ubm6'), uf=findM('ubfinal'), gf=findM('grandfinal');
-                if (u1?.isFinished && u5) ups.push({ id: u5.id, type: 'h', tid: getW(u1) });
-                if (u2?.isFinished && u5) ups.push({ id: u5.id, type: 'a', tid: getW(u2) });
-                if (u3?.isFinished && u6) ups.push({ id: u6.id, type: 'h', tid: getW(u3) });
-                if (u4?.isFinished && u6) ups.push({ id: u6.id, type: 'a', tid: getW(u4) });
-                if (u5?.isFinished && uf) ups.push({ id: uf.id, type: 'h', tid: getW(u5) });
-                if (u6?.isFinished && uf) ups.push({ id: uf.id, type: 'a', tid: getW(u6) });
-                if (uf?.isFinished && gf) ups.push({ id: gf.id, type: 'h', tid: getW(uf) });
-                const l1=findM('lbm1'), l2=findM('lbm2'), l3=findM('lbm3'), l4=findM('lbm4'), l5=findM('lbm5'), lf=findM('lbfinal');
-                if (u1?.isFinished && l1) ups.push({ id: l1.id, type: 'h', tid: getL(u1) });
-                if (u2?.isFinished && l1) ups.push({ id: l1.id, type: 'a', tid: getL(u2) });
-                if (u3?.isFinished && l2) ups.push({ id: l2.id, type: 'h', tid: getL(u3) });
-                if (u4?.isFinished && l2) ups.push({ id: l2.id, type: 'a', tid: getL(u4) });
-                if (l1?.isFinished && l3) ups.push({ id: l3.id, type: 'a', tid: getW(l1) });
-                if (u6?.isFinished && l3) ups.push({ id: l3.id, type: 'h', tid: getL(u6) });
-                if (l2?.isFinished && l4) ups.push({ id: l4.id, type: 'a', tid: getW(l2) });
-                if (u5?.isFinished && l4) ups.push({ id: l4.id, type: 'h', tid: getL(u5) });
-                if (l3?.isFinished && l5) ups.push({ id: l5.id, type: 'h', tid: getW(l3) });
-                if (l4?.isFinished && l5) ups.push({ id: l5.id, type: 'a', tid: getW(l4) });
-                if (l5?.isFinished && lf) ups.push({ id: lf.id, type: 'h', tid: getW(l5) });
-                if (uf?.isFinished && lf) ups.push({ id: lf.id, type: 'a', tid: getL(uf) });
-                if (lf?.isFinished && gf) ups.push({ id: gf.id, type: 'a', tid: getW(lf) });
-                setMatches(prev => prev.map(m => {
-                    const mus = ups.filter(u => u.id === m.id);
-                    if (mus.length === 0) return m;
-                    let nm = { ...m };
-                    mus.forEach(u => { if (u.type === 'h') nm.homeTeamId = u.tid || ''; else nm.awayTeamId = u.tid || ''; });
-                    return nm;
+            const generateNextRound = () => {
+                const pairs = generateSwissPairings(sorted);
+                if (!pairs.length) return alert('Không thể tạo cặp đấu mới!');
+                const newMatches = pairs.map(p => ({
+                    id: `m-${Date.now()}-${Math.random()}`,
+                    homeTeamId: p[0],
+                    awayTeamId: p[1],
+                    round: curRd + 1,
+                    stage: 'SWISS',
+                    isFinished: false
                 }));
+                setMatches(prev => [...prev, ...newMatches]);
             };
-            useEffect(() => { refreshBracket(); }, [matches.filter(m => m.isFinished).length]);
 
-            if (!isLoggedIn || view === null) return (
-                <div className="fixed inset-0 bg-[#08080c] z-[9999] flex items-center justify-center p-4">
-                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-gray-900 p-8 rounded-2xl border-t-4 border-gold w-full max-w-md text-center shadow-2xl relative overflow-hidden">
-                        <h1 className="bold-title gold-glow text-5xl mb-8">PRO LEAGUE 16</h1>
-                        <div className="space-y-4 mb-8">
-                            <button onClick={() => adminPassword === 'GCSLADMIN' ? (setView('admin'), setIsLoggedIn(true)) : setShowPasswordError(true)} className="w-full py-4 bg-gold text-black font-black fvpl-font italic text-xl rounded shadow-[0_0_20px_rgba(250,204,21,0.2)]">ADMIN</button>
-                            <input type="password" placeholder="Pass..." value={adminPassword} onChange={e => setAdminPassword(e.target.value)} className={cn("w-full bg-white/5 border px-4 py-2 rounded text-center text-white outline-none", showPasswordError ? "border-red-500 animate-shake" : "border-white/10")} />
-                            <button onClick={() => (setView('viewer'), setIsLoggedIn(true))} className="w-full py-4 bg-white/5 text-white font-black fvpl-font italic text-xl rounded border border-white/10 mt-4">VIEWER</button>
+            const logout = () => {
+                if (confirm('Bạn muốn thoát chế độ hiện tại?')) {
+                    setView(null);
+                    setPass('');
+                }
+            };
+
+            const exportImg = async (id, name) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                try {
+                    const dataUrl = await toPng(el, { backgroundColor: '#08080c' });
+                    const link = document.createElement('a');
+                    link.download = `${name}.png`;
+                    link.href = dataUrl;
+                    link.click();
+                } catch(e) { alert('Lỗi xuất ảnh!'); }
+            };
+
+            // Màn hình chọn chế độ
+            if (!view) return (
+                <div className="h-screen flex items-center justify-center p-4">
+                    <div className="glass-card p-10 w-full max-w-md text-center shadow-2xl">
+                        <h1 className="bold-title text-4xl mb-10">GCSL 2026</h1>
+                        <div className="space-y-4">
+                            <input 
+                                type="password" 
+                                value={pass} 
+                                onChange={e => setPass(e.target.value)} 
+                                placeholder="Nhập mã Admin..." 
+                                className="w-full bg-white/5 border border-white/10 p-3 rounded text-center text-white outline-none focus:border-gold transition-colors"
+                            />
+                            <button 
+                                onClick={() => pass === 'GCSLADMIN' ? setView('admin') : alert('Mã Admin sai!')} 
+                                className="w-full py-4 bg-gold text-black font-black uppercase italic rounded-md hover:scale-105 transition-transform"
+                            >
+                                QUẢN TRỊ VIÊN
+                            </button>
+                            <div className="pt-4 border-t border-white/10">
+                                <button 
+                                    onClick={() => setView('viewer')} 
+                                    className="w-full py-4 bg-white/5 border border-white/10 text-white font-bold uppercase rounded-md hover:bg-white/10 transition-colors"
+                                >
+                                    CHẾ ĐỘ KHÁN GIẢ
+                                </button>
+                            </div>
                         </div>
-                    </motion.div>
+                    </div>
                 </div>
             );
 
             return (
-                <div className="flex flex-col bg-[#08080c] w-full h-full min-h-screen overflow-hidden">
-                    <header className="flex justify-between items-end p-6 border-b-2 border-gold/20 pb-4 shrink-0 px-10">
-                        <h1 className="bold-title gold-glow leading-[0.8] whitespace-nowrap">GIO CAI SUMMER<br />LEAGUE 2026</h1>
-                        <div className="flex gap-4">
-                            <button onClick={() => (setIsLoggedIn(false), setView(null))} className="bg-white/10 p-2 rounded text-xs font-black italic">HOME</button>
-                            {view === 'admin' && <button onClick={() => setEditingTeams(!editingTeams)} className="bg-gold text-black p-2 rounded text-xs font-black">TEAMS</button>}
+                <div className="h-screen flex flex-col overflow-hidden">
+                    {/* Header */}
+                    <header className="p-6 border-b border-gold/20 flex justify-between items-end px-10 shrink-0">
+                        <div>
+                            <h1 className="bold-title">GIO CAI SUMMER</h1>
+                            <h1 className="bold-title text-3xl md:text-5xl">LEAGUE 2026</h1>
+                        </div>
+                        <div className="flex gap-4 mb-2">
+                            <button onClick={logout} className="bg-white/10 px-4 py-2 rounded text-xs font-black italic hover:bg-white/20">THOÁT</button>
+                            {view === 'admin' && (
+                                <button 
+                                    onClick={() => confirm('Xóa sạch dữ liệu?') && (localStorage.clear(), location.reload())}
+                                    className="bg-red-500/20 text-red-500 px-4 py-2 rounded text-xs font-black italic border border-red-500/20"
+                                >
+                                    RESET
+                                </button>
+                            )}
                         </div>
                     </header>
-                    <div className="flex gap-4 px-10 mt-4"><NavButton active={stage === 'SWISS'} onClick={() => setStage('SWISS')} label="Swiss Stage" /><NavButton active={stage === 'PLAYOFF'} onClick={() => setStage('PLAYOFF')} label="Play-offs" /><NavButton active={stage.startsWith('KO')} onClick={() => setStage('KO_UPPER')} label="Knock-outs" /></div>
-                    <main className="flex-1 overflow-hidden p-10">
+
+                    {/* Nav */}
+                    <nav className="flex gap-4 p-4 px-10 shrink-0">
+                        {['SWISS', 'PLAYOFF', 'KO'].map(s => (
+                            <button 
+                                key={s} 
+                                onClick={() => setStage(s)}
+                                className={cn(
+                                    "px-6 py-2 text-[10px] uppercase font-black italic rounded transition-all",
+                                    stage === s ? "bg-gold text-black translate-y-[-2px] shadow-lg" : "bg-white/5 text-gray-500 hover:text-white"
+                                )}
+                            >
+                                {s === 'SWISS' ? 'Vòng Thụy Sĩ' : s === 'PLAYOFF' ? 'Vòng Play-off' : 'Vòng Loại Trực Tiếp'}
+                            </button>
+                        ))}
+                    </nav>
+
+                    {/* Content */}
+                    <main className="flex-1 overflow-hidden p-10 pt-4">
                         <AnimatePresence mode="wait">
-                            {stage === 'SWISS' && (
-                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-12 gap-6 h-full">
-                                    <div className="col-span-12 lg:col-span-4 flex flex-col overflow-hidden">
-                                        <div className="flex justify-between items-center bg-gold text-black p-3 rounded-t-md"><h2 className="font-black">BXH SWISS</h2><button onClick={() => downloadImage('swiss-standings', 'BXH_SWISS')} className="p-1"><Camera className="w-4 h-4"/></button></div>
-                                        <div id="swiss-standings" className="flex-1 overflow-y-auto bg-gray-900/40 p-2 custom-scrollbar">
-                                            <table className="w-full text-xs text-left">
-                                                <thead className="bg-black/40 text-[9px] text-gray-500 uppercase"><tr><th className="p-2">#</th><th className="p-2">TEAM</th><th className="p-2">W-L</th><th className="p-2">GD</th><th className="p-2">PTS</th></tr></thead>
-                                                <tbody>{sortedTeams.map((t, i) => <tr key={t.id} className="border-b border-white/5 hover:bg-white/5"><td className="p-2 font-black">{i+1}</td><td className="p-2 font-bold">{t.name}</td><td className="p-2">{t.wins}-{t.losses}</td><td className="p-2">{t.gd}</td><td className="p-2 text-gold font-black">{t.points}</td></tr>)}</tbody>
+                            {stage === 'SWISS' ? (
+                                <motion.div 
+                                    key="swiss"
+                                    initial={{ opacity: 0, x: 20 }} 
+                                    animate={{ opacity: 1, x: 0 }} 
+                                    exit={{ opacity: 0, x: -20 }}
+                                    className="grid grid-cols-12 gap-8 h-full"
+                                >
+                                    {/* BXH */}
+                                    <div className="col-span-12 lg:col-span-4 flex flex-col overflow-hidden glass-card">
+                                        <div className="p-4 bg-gold text-black font-black flex justify-between items-center shrink-0">
+                                            <span>BẢNG XẾP HẠNG</span>
+                                            <button onClick={() => exportImg('bxh-capture', 'BXH_GCSL_2026')} className="hover:scale-110 transition-transform">
+                                                <Camera className="w-4 h-4"/>
+                                            </button>
+                                        </div>
+                                        <div id="bxh-capture" className="flex-1 overflow-y-auto custom-scrollbar p-2 bg-[#08080c]">
+                                            <table className="w-full text-xs">
+                                                <thead className="text-gray-500 border-b border-white/5">
+                                                    <tr>
+                                                        <th className="p-2 text-left">#</th>
+                                                        <th className="text-left">ĐỘI TUYỂN</th>
+                                                        <th>W-L</th>
+                                                        <th>GD</th>
+                                                        <th className="text-right pr-4">PTS</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {sorted.map((t, i) => (
+                                                        <tr key={t.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                                                            <td className="p-3 font-black text-gray-400">{i+1}</td>
+                                                            <td className="font-bold uppercase text-gold/90">{t.name}</td>
+                                                            <td className="text-center">{t.wins}-{t.losses}</td>
+                                                            <td className="text-center">{t.gd > 0 ? `+${t.gd}` : t.gd}</td>
+                                                            <td className="font-black text-gold text-right pr-4 text-base">{t.points}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
                                             </table>
                                         </div>
                                     </div>
-                                    <div className="col-span-12 lg:col-span-8 overflow-y-auto custom-scrollbar">
-                                        <div className="flex justify-between items-center mb-4"><h3 className="text-2xl font-black italic text-gold">MATCH CENTER</h3>{view === 'admin' && currentRound < 4 && <button onClick={() => addMatches(generateSwissPairings(sortedTeams, currentRound+1).map(p=>({homeId:p[0],awayId:p[1],round:currentRound+1,stage:'SWISS'})))} className="bg-gold text-black px-4 py-1 rounded text-[10px] font-black uppercase">RD {currentRound+1}</button>}</div>
-                                        <div className="space-y-4">{[1,2,3,4].map(r => { const rms = matches.filter(m=>m.stage === 'SWISS' && m.round === r); if(rms.length===0) return null; return <div key={r} className="grid grid-cols-1 md:grid-cols-2 gap-4">{rms.map(m => <MatchCard key={m.id} match={m} teams={teams} view={view} onUpdate={updateScore} onReset={resetMatch}/>)}</div>; })}</div>
+
+                                    {/* Danh sách trận */}
+                                    <div className="col-span-12 lg:col-span-8 flex flex-col overflow-hidden">
+                                        <div className="flex justify-between items-center mb-6 shrink-0">
+                                            <h2 className="text-2xl font-black italic text-gold uppercase tracking-tighter">Match Center</h2>
+                                            {view === 'admin' && curRd < 4 && (
+                                                <button 
+                                                    onClick={generateNextRound}
+                                                    className="bg-gold text-black px-6 py-2 rounded font-black italic text-xs hover:scale-105 transition-transform"
+                                                >
+                                                    TẠO VÒNG {curRd + 1}
+                                                </button>
+                                            )}
+                                        </div>
+                                        <div className="flex-1 overflow-y-auto custom-scrollbar space-y-8 pr-2">
+                                            {[4, 3, 2, 1].map(r => {
+                                                const rMatches = matches.filter(m => m.stage === 'SWISS' && m.round === r);
+                                                if (!rMatches.length) return null;
+                                                return (
+                                                    <div key={r}>
+                                                        <div className="flex items-center gap-4 mb-4">
+                                                            <div className="h-[2px] flex-1 bg-white/5"></div>
+                                                            <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em]">ROUND {r}</h4>
+                                                            <div className="h-[2px] flex-1 bg-white/5"></div>
+                                                        </div>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                            {rMatches.map(m => (
+                                                                <MatchCard 
+                                                                    key={m.id} 
+                                                                    match={m} 
+                                                                    teams={teams} 
+                                                                    onSave={saveResult} 
+                                                                    onReset={resetMatch} 
+                                                                    view={view}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            ) : (
+                                <motion.div 
+                                    key="others"
+                                    initial={{ opacity: 0 }} 
+                                    animate={{ opacity: 1 }}
+                                    className="h-full flex items-center justify-center text-center"
+                                >
+                                    <div>
+                                        <Medal className="w-20 h-20 text-gold/20 mx-auto mb-6 animate-pulse"/>
+                                        <h2 className="text-4xl font-black italic text-white/20 uppercase">Coming Soon</h2>
+                                        <p className="text-gray-500 font-bold uppercase tracking-widest mt-2">Hoàn thành vòng Thụy Sĩ để mở khóa</p>
                                     </div>
                                 </motion.div>
                             )}
-                            {stage === 'PLAYOFF' && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center gap-8"><h2 className="text-4xl font-black italic gold-glow">PLAY-OFF ROUND</h2><div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">{matches.filter(m=>m.stage==='PLAYOFF').map(m => <MatchCard key={m.id} match={m} teams={teams} view={view} onUpdate={updateScore} onReset={resetMatch} isBO3/>)}</div></motion.div>}
-                            {stage.startsWith('KO') && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col h-full overflow-hidden"><div className="flex justify-center gap-4 mb-4"><button onClick={()=>setStage('KO_UPPER')} className={cn("px-4 py-2 font-black italic", stage==='KO_UPPER'?"text-gold border-b-2 border-gold":"text-gray-500")}>UPPER</button><button onClick={()=>setStage('KO_LOWER')} className={cn("px-4 py-2 font-black italic", stage==='KO_LOWER'?"text-gold border-b-2 border-gold":"text-gray-500")}>LOWER</button></div><div className="flex-1 overflow-auto p-4 flex justify-center">{stage==='KO_UPPER'?<Bracket matches={matches} teams={teams} view={view} onUpdate={updateScore} onReset={resetMatch} stage="UPPER"/>:<Bracket matches={matches} teams={teams} view={view} onUpdate={updateScore} onReset={resetMatch} stage="LOWER"/>}</div></motion.div>}
                         </AnimatePresence>
                     </main>
-                    <footer className="p-4 bg-gray-900 border-t border-white/5 text-[10px] text-gray-500 font-bold uppercase tracking-widest text-center">PRO TOURNAMENT SYSTEM 2026 • GCSL</footer>
+
+                    {/* Footer */}
+                    <footer className="p-4 border-t border-white/5 text-[9px] font-black text-gray-600 uppercase tracking-[0.4em] text-center shrink-0">
+                        GCSL SYSTEM V1.2.0 • BY PROFESSIONAL TOURNAMENT ENGINE
+                    </footer>
                 </div>
             );
         }
 
-        function NavButton({ active, label, onClick }) { return <button onClick={onClick} className={cn("px-4 py-2 text-[10px] font-black uppercase italic tracking-widest transition-all rounded-md", active ? "bg-white text-black shadow-lg" : "text-gray-400 hover:text-white")}>{label}</button>; }
-        function MatchCard({ match, teams, view, onUpdate, onReset, isBO3, isBO5 }) {
-            const h = teams.find(t=>t.id===match.homeTeamId), a = teams.find(t=>t.id===match.awayTeamId);
-            const [hs, setHs] = useState(match.homeScore||0), [as, setAs] = useState(match.awayScore||0);
-            return <div className="bg-gray-900 border border-white/10 rounded-md p-3 w-[260px]"><div className="flex justify-between text-[8px] text-gray-500 font-black mb-2 uppercase"><span>{match.stage} {match.round > 0 && `RD${match.round}`}</span> {view==='admin'&&match.isFinished&&<button onClick={()=>onReset(match.id)} className="text-red-500 underline">RESET</button>}</div><div className="flex items-center justify-between mb-1"><span className="text-sm font-bold truncate flex-1 uppercase">{h?.name||'TBD'}</span>{view==='admin'&&!match.isFinished?<input type="number" value={hs} onChange={e=>setHs(parseInt(e.target.value)||0)} className="w-10 bg-black text-center border border-white/20"/>:<span className="font-black text-lg">{match.isFinished?match.homeScore:'-'}</span>}</div><div className="flex items-center justify-between"><span className="text-sm font-bold truncate flex-1 uppercase">{a?.name||'TBD'}</span>{view==='admin'&&!match.isFinished?<input type="number" value={as} onChange={e=>setAs(parseInt(e.target.value)||0)} className="w-10 bg-black text-center border border-white/20"/>:<span className="font-black text-lg">{match.isFinished?match.awayScore:'-'}</span>}</div>{view==='admin'&&!match.isFinished&&<button onClick={()=>onUpdate(match.id,hs,as)} className="w-full bg-gold text-black text-[9px] font-black py-1 mt-2">SUBMIT</button>}</div>;
+        function MatchCard({ match, teams, onSave, onReset, view }) {
+            const h = teams.find(t => t.id === match.homeTeamId);
+            const a = teams.find(t => t.id === match.awayTeamId);
+            const [hS, setHS] = useState(match.homeScore || 0);
+            const [aS, setAS] = useState(match.awayScore || 0);
+
+            return (
+                <div className={cn(
+                    "glass-card p-4 transition-all hover:border-gold/30",
+                    match.isFinished ? "opacity-80" : "border-gold/20 bg-gold/5"
+                )}>
+                    <div className="flex justify-between items-center text-[8px] text-gray-500 font-black mb-4 uppercase tracking-widest">
+                        <span>MATCH ID: {match.id.slice(-6).toUpperCase()}</span>
+                        {view === 'admin' && match.isFinished && (
+                            <button onClick={() => onReset(match.id)} className="text-red-500 hover:underline">RESET</button>
+                        )}
+                    </div>
+                    
+                    <div className="space-y-3">
+                        <div className="flex justify-between items-center group">
+                            <span className="text-sm font-bold uppercase truncate pr-4 text-white group-hover:text-gold transition-colors">{h?.name || 'TBD'}</span>
+                            {view === 'admin' && !match.isFinished ? (
+                                <input 
+                                    type="number" 
+                                    value={hS} 
+                                    onChange={e => setHS(parseInt(e.target.value) || 0)} 
+                                    className="w-12 bg-black border border-white/20 rounded text-center font-black p-1 focus:border-gold outline-none"
+                                />
+                            ) : (
+                                <span className={cn("text-2xl font-black", match.isFinished && match.homeScore > match.awayScore ? "text-gold" : "text-white")}>
+                                    {match.isFinished ? match.homeScore : '-'}
+                                </span>
+                            )}
+                        </div>
+                        
+                        <div className="h-[1px] bg-white/5 w-1/4 mx-auto"></div>
+
+                        <div className="flex justify-between items-center group">
+                            <span className="text-sm font-bold uppercase truncate pr-4 text-white group-hover:text-gold transition-colors">{a?.name || 'TBD'}</span>
+                            {view === 'admin' && !match.isFinished ? (
+                                <input 
+                                    type="number" 
+                                    value={aS} 
+                                    onChange={e => setAS(parseInt(e.target.value) || 0)} 
+                                    className="w-12 bg-black border border-white/20 rounded text-center font-black p-1 focus:border-gold outline-none"
+                                />
+                            ) : (
+                                <span className={cn("text-2xl font-black", match.isFinished && match.awayScore > match.homeScore ? "text-gold" : "text-white")}>
+                                    {match.isFinished ? match.awayScore : '-'}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+
+                    {view === 'admin' && !match.isFinished && (
+                        <button 
+                            onClick={() => onSave(match.id, hS, aS)}
+                            className="w-full bg-gold text-black py-2 mt-4 text-[10px] font-black uppercase italic rounded-sm hover:scale-[1.02] active:scale-95 transition-all"
+                        >
+                            XÁC NHẬN KẾT QUẢ
+                        </button>
+                    )}
+                </div>
+            );
         }
 
-        function Bracket({ matches, teams, view, onUpdate, onReset, stage }) {
-            const renderMatch = (p, bo3=true) => { const m = matches.find(m=>m.id.startsWith(p)); return m ? <MatchCard key={m.id} match={m} teams={teams} view={view} onUpdate={onUpdate} onReset={onReset} isBO3={bo3}/> : null; };
-            if(stage==='UPPER') return <div className="flex gap-12 items-center"><div><h4 className="text-[10px] font-black text-gray-500 mb-2">QUARTERS</h4><div className="space-y-4">{['ubm1','ubm2','ubm3','ubm4'].map(p=>renderMatch(p))}</div></div><div><h4 className="text-[10px] font-black text-gray-500 mb-2">SEMIS</h4><div className="space-y-16">{['ubm5','ubm6'].map(p=>renderMatch(p))}</div></div><div><h4 className="text-[10px] font-black text-gray-500 mb-2">UPPER FINAL</h4>{renderMatch('ubfinal')}</div><div><h4 className="text-[10px] font-black text-gold mb-2">GRAND FINAL</h4>{renderMatch('grandfinal', false)}</div></div>;
-            return <div className="flex gap-12 items-center"><div><h4 className="text-[10px] font-black text-gray-500 mb-2">LR1</h4><div className="space-y-4">{['lbm1','lbm2'].map(p=>renderMatch(p))}</div></div><div><h4 className="text-[10px] font-black text-gray-500 mb-2">LR2</h4><div className="space-y-8">{['lbm3','lbm4'].map(p=>renderMatch(p))}</div></div><div><h4 className="text-[10px] font-black text-gray-500 mb-2">L-SEMI</h4>{renderMatch('lbm5')}</div><div><h4 className="text-[10px] font-black text-gray-500 mb-2">L-FINAL</h4>{renderMatch('lbfinal')}</div></div>;
-        }
-
-        const rootE = ReactDOM.createRoot(document.getElementById('root'));
-        rootE.render(<App />);
+        // Render App
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
     </script>
 </body>
 </html>
